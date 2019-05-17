@@ -1,9 +1,147 @@
-# NotePad
-##拓展功能 本项目对NotePad进行了三个功能拓展，如下：<br> ###1NoteList中显示条目增加时间显示 ###2笔记查询（按标题查询） ###3笔记排序(按创建时间或修改时间) ##拓展功能解析 ###1NoteList中显示条目增加时间显示 在NotePad原应用中，笔记列表只显示了笔记的标题。首先，找到列表中item的布局：noteslist_item.xml。要在标题下方加时间显示，就要在标题的TextView下再加一个时间的TextView。 但是由于原应用列表item只需要一个标题，所以不需要用上别的布局，而我要多加一个时间TextView，就要把标题TextView和时间TextView放入垂直的线性布局<br> NotePad原应用已经保存了时间，但是，这并不是我们平常所见到的时间格式，而是时间戳，需要对这些数据进行转化，使人能看的懂。 我选择的方法时把时间戳改为以时间格式存入，改动地方分别为NotePadProvider中的insert方法和NoteEditor中的updateNote方法。<br> 效果如下：<br>
-![](https://i.loli.net/2019/04/28/5cc50fb854181.png)
-###2笔记查询（按标题查询） 要添加笔记查询功能，就要在应用中增加一个搜索的入口。找到菜单的xml文件，list_options_menu.xml，添加一个搜索的item，搜索图标用安卓自带的图标.<br> 在case语句中写跳转activity代码之前要先写好搜索的activity，新建一个名为NoteSearch的activity。由于搜索出来的也是笔记列表，所以可以模仿NoteList的activity继承ListActivity。.<br> 要动态地显示搜索结果，就要对SearchView文本变化设置监听.动态搜索的实现最主要的部分在onQueryTextChange方法中，而onQueryTextChange方法作用是，当SearchView中文本发生变化时，执行其中代码，<br> 搜索还有一个重要的部分就是要做到模糊匹配而不是严格匹配，可以使用数据库查询语句中的LIKE和%结合来实现，newText为输入搜索的内容：String[] selectionArgs = { "%"+newText+"%" };<br> 最后要在AndroidManifest.xml注册NoteSearch：<br> 效果截图如下：<br>
-![](https://i.loli.net/2019/04/28/5cc50f9bbe4f5.png)
-![](https://i.loli.net/2019/04/28/5cc50fb899d88.png)
-###3笔记排序(按创建时间或修改时间) 笔记排序相对来说简单，只要把Cursor的排序参数变换下就可以了。并且在NoteList菜单switch下添加case：<br> 效果截图如下：<br>
-![](https://i.loli.net/2019/04/28/5cc50fb873aac.png)
 
+
+
+//主要代码
+package com.example.android.notepad;
+
+import android.net.Uri;
+import android.provider.BaseColumns;
+
+
+public final class NotePad {
+    public static final String AUTHORITY = "com.google.provider.NotePad";
+
+    // This class cannot be instantiated
+    private NotePad() {
+    }
+
+    /**
+     * Notes table contract
+     */
+    public static final class Notes implements BaseColumns {
+
+        // This class cannot be instantiated
+        private Notes() {}
+
+        /**
+         * The table name offered by this provider
+         */
+        public static final String TABLE_NAME = "notes";
+
+        /*
+         * URI definitions
+         */
+
+        /**
+         * The scheme part for this provider's URI
+         */
+        private static final String SCHEME = "content://";
+
+
+        /**
+         * Path parts for the URIs
+         */
+
+        /**
+         * Path part for the Notes URI
+         */
+        private static final String PATH_NOTES = "/notes";
+
+        /**
+         * Path part for the Note ID URI
+         */
+        private static final String PATH_NOTE_ID = "/notes/";
+
+        /**
+         * 0-relative position of a note ID segment in the path part of a note ID URI
+         */
+        public static final int NOTE_ID_PATH_POSITION = 1;
+
+        /**
+         * Path part for the Live Folder URI
+         */
+        private static final String PATH_LIVE_FOLDER = "/live_folders/notes";
+
+        /**
+         * The content:// style URL for this table
+         */
+        public static final Uri CONTENT_URI =  Uri.parse(SCHEME + AUTHORITY + PATH_NOTES);
+
+        /**
+         * The content URI base for a single note. Callers must
+         * append a numeric note id to this Uri to retrieve a note
+         */
+        public static final Uri CONTENT_ID_URI_BASE
+                = Uri.parse(SCHEME + AUTHORITY + PATH_NOTE_ID);
+
+        /**
+         * The content URI match pattern for a single note, specified by its ID. Use this to match
+         * incoming URIs or to construct an Intent.
+         */
+        public static final Uri CONTENT_ID_URI_PATTERN
+                = Uri.parse(SCHEME + AUTHORITY + PATH_NOTE_ID + "/#");
+
+        /**
+         * The content Uri pattern for a notes listing for live folders
+         */
+        public static final Uri LIVE_FOLDER_URI
+                = Uri.parse(SCHEME + AUTHORITY + PATH_LIVE_FOLDER);
+
+        /*
+         * MIME type definitions
+         */
+
+        /**
+         * The MIME type of {@link #CONTENT_URI} providing a directory of notes.
+         */
+        public static final String CONTENT_TYPE = "vnd.android.cursor.dir/vnd.google.note";
+
+        /**
+         * The MIME type of a {@link #CONTENT_URI} sub-directory of a single
+         * note.
+         */
+        public static final String CONTENT_ITEM_TYPE = "vnd.android.cursor.item/vnd.google.note";
+
+        /**
+         * The default sort order for this table
+         */
+        public static final String DEFAULT_SORT_ORDER = "modified DESC";
+
+        /*
+         * Column definitions
+         */
+
+        /**
+         * Column name for the title of the note
+         * <P>Type: TEXT</P>
+         */
+        public static final String COLUMN_NAME_TITLE = "title";
+
+        /**
+         * Column name of the note content
+         * <P>Type: TEXT</P>
+         */
+        public static final String COLUMN_NAME_NOTE = "note";
+
+        /**
+         * Column name for the creation timestamp
+         * <P>Type: INTEGER (long from System.curentTimeMillis())</P>
+         */
+        public static final String COLUMN_NAME_CREATE_DATE = "created";
+
+        /**
+         * Column name for the modification timestamp
+         * <P>Type: INTEGER (long from System.curentTimeMillis())</P>
+         */
+        public static final String COLUMN_NAME_MODIFICATION_DATE = "modified";
+
+    }
+}
+# NotePad
+##拓展功能 本项目对NotePad进行了三个功能拓展，如下：<br> 
+###1NoteList中显示条目增加时间显示 ###2笔记查询（按标题查询） ###3笔记排序(按创建时间或修改时间) 
+![](https://i.loli.net/2019/04/28/5cc50fb854181.png)
+###2笔记查询（按标题查询） 要添加笔记查询功能，就要在应用中增加一个搜索的入口。
+![](https://i.loli.net/2019/04/28/5cc50f9bbe4f5.png)
+###3笔记排序(按创建时间或修改时间) 笔记排序相对来说简单，只要把Cursor的排序参数变换下就可以了。<br>
+![](https://i.loli.net/2019/04/28/5cc50fb873aac.png)
